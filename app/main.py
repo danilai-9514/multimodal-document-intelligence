@@ -1,21 +1,21 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
-from pathlib import Path
-import uuid
 
-from app.config import UPLOAD_DIR
-from app.ingest import save_uploaded_file, build_document_records
-from app.retrievers import VectorIndex
+from app.config import UPLOAD_PATH
+from app.ingest import save_uploaded_file, build_document_records, VectorIndex
 from app.answer import answer_question
 
 app = FastAPI(title="Multimodal Document Intelligence")
 
+
 class QuestionRequest(BaseModel):
     question: str
 
+
 @app.get("/")
-def read_root():
+def health():
     return {"message": "Multimodal Document Intelligence API is running"}
+
 
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
@@ -29,13 +29,13 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="No pages were extracted from the PDF.")
 
     chunks = []
-    metadata = []
+    meta = []
     for rec in records:
-        page_text = (rec.get("text") or "").strip()
-        if not page_text:
+        text = (rec.get("text") or "").strip()
+        if not text:
             continue
-        chunks.append(page_text)
-        metadata.append({
+        chunks.append(text)
+        meta.append({
             "doc_id": rec["doc_id"],
             "page_no": rec["page_no"],
             "section": "body",
@@ -44,7 +44,7 @@ async def upload_document(file: UploadFile = File(...)):
 
     index = VectorIndex()
     if chunks:
-        index.add_texts(chunks, metadata)
+        index.add_texts(chunks, meta)
         index.save()
 
     return {
@@ -53,6 +53,7 @@ async def upload_document(file: UploadFile = File(...)):
         "pages": len(records),
         "message": "Document indexed successfully."
     }
+
 
 @app.post("/ask")
 async def ask_question(payload: QuestionRequest):
@@ -71,5 +72,4 @@ async def ask_question(payload: QuestionRequest):
             f"Document: {meta['doc_id']} | Page: {meta['page_no']} | Section: {meta['section']} | Source: {meta['source']}"
         )
 
-    result = answer_question(q, evidence)
-    return result
+    return answer_question(q, evidence)

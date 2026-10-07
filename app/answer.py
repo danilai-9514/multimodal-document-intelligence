@@ -1,6 +1,6 @@
 from openai import OpenAI
 
-from app.config import OPENAI_API_KEY, OPENAI_MODEL
+from app.config import OPENAI_API_KEY, LLM_MODEL
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -8,10 +8,11 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 def answer_question(question: str, evidence: list[str]) -> dict:
     context = "\n\n---\n\n".join(evidence)
     prompt = f"""
-You are a multimodal document QA assistant.
+You are a document intelligence assistant.
 
-Use only the provided evidence. If information is missing, say so clearly.
+Use only the provided evidence.
 Every answer must include citations in this format: [Document: <doc_id>, Page: <page_no>, Section: <section>]
+If the answer cannot be supported by the evidence, say so clearly.
 
 Question:
 {question}
@@ -21,9 +22,9 @@ Evidence:
 """
 
     response = client.chat.completions.create(
-        model=OPENAI_MODEL,
+        model=LLM_MODEL,
         messages=[
-            {"role": "system", "content": "You are a careful document intelligence assistant."},
+            {"role": "system", "content": "You are a careful multimodal document Q&A assistant."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,

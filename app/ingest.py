@@ -9,12 +9,12 @@ import pdfplumber
 from PIL import Image
 import pytesseract
 
-from app.config import UPLOAD_DIR
+from app.config import UPLOAD_PATH
 
 
 def save_uploaded_file(file_obj) -> str:
     filename = file_obj.filename or f"document_{uuid.uuid4().hex}.pdf"
-    save_path = Path(UPLOAD_DIR) / filename
+    save_path = Path(UPLOAD_PATH) / filename
     with open(save_path, "wb") as f:
         f.write(file_obj.file.read())
     return str(save_path)
@@ -53,11 +53,9 @@ def ocr_page_image(image_path: str) -> str:
 
 def build_document_records(pdf_path: str) -> List[Dict[str, Any]]:
     doc_id = str(uuid.uuid4())
-    pages = extract_pdf_text(pdf_path)
     records: List[Dict[str, Any]] = []
-
-    for page in pages:
-        text = page.get("text") or ""
+    for page in extract_pdf_text(pdf_path):
+        text = (page.get("text") or "").strip()
         records.append({
             "doc_id": doc_id,
             "page_no": page["page_no"],
@@ -67,5 +65,4 @@ def build_document_records(pdf_path: str) -> List[Dict[str, Any]]:
             "charts": [],
             "metadata": {}
         })
-
     return records

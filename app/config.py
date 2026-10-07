@@ -1,18 +1,22 @@
-from pathlib import Path
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "data")))
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads")))
-INDEX_DIR = Path(os.getenv("INDEX_DIR", str(DATA_DIR / "index")))
+OUTPUT_PATH = Path(os.getenv("OUTPUT_PATH", str(BASE_DIR / "content")))
+VECTOR_STORE_PATH = Path(os.getenv("VECTOR_STORE_PATH", str(BASE_DIR / "vector_store")))
+UPLOAD_PATH = Path(os.getenv("UPLOAD_PATH", str(BASE_DIR / "uploads")))
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY", "")
+LANGCHAIN_TRACING_V2 = os.getenv("LANGCHAIN_TRACING_V2", "true")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4-turbo-preview")
 
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-INDEX_DIR.mkdir(parents=True, exist_ok=True)
+for path in [OUTPUT_PATH, VECTOR_STORE_PATH, UPLOAD_PATH]:
+    path.mkdir(parents=True, exist_ok=True)
+
+os.environ.setdefault("LANGCHAIN_TRACING_V2", LANGCHAIN_TRACING_V2)

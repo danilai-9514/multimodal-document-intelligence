@@ -1,18 +1,19 @@
-import os
 import json
+from typing import Any, List
 from pathlib import Path
+
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 
-from app.config import INDEX_DIR, EMBEDDING_MODEL
+from app.config import VECTOR_STORE_PATH, EMBEDDING_MODEL
 
 
 class VectorIndex:
     def __init__(self):
         self.model = SentenceTransformer(EMBEDDING_MODEL)
-        self.index_path = Path(INDEX_DIR) / "faiss.index"
-        self.metadata_path = Path(INDEX_DIR) / "metadata.json"
+        self.index_path = Path(VECTOR_STORE_PATH) / "faiss.index"
+        self.metadata_path = Path(VECTOR_STORE_PATH) / "metadata.json"
         self.index = None
         self.metadata = []
 

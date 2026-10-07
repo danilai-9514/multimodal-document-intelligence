@@ -1,1 +1,4 @@
-from app.main import app
+from pathlib import Path
+import os
+
+__all__ = []
