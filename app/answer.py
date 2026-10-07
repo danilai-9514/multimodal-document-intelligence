@@ -1,34 +1,78 @@
-from openai import OpenAI
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from pydantic import BaseModel
+from pathlib import Path
 
-from app.config import OPENAI_API_KEY, LLM_MODEL
+from app.config import UPLOAD_PATH
+from app.ingest import save_uploaded_file, build_document_records
+from app.retrievers import VectorIndex
+from app.answer import answer_question
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+app = FastAPI(title="Multimodal Document Intelligence", version="1.0.0")
 
 
-def answer_question(question: str, evidence: list[str]) -> dict:
-    context = "\n\n---\n\n".join(evidence)
-    prompt = f"""
-You are a document intelligence assistant.
+class QuestionRequest(BaseModel):
+    question: str
 
-Use only the provided evidence.
-Every answer must include citations in this format: [Document: <doc_id>, Page: <page_no>, Section: <section>]
-If the answer cannot be supported by the evidence, say so clearly.
 
-Question:
-{question}
+@app.get("/")
+def health():
+    return {"message": "Multimodal Document Intelligence API is running"}
 
-Evidence:
-{context}
-"""
 
-    response = client.chat.completions.create(
-        model=LLM_MODEL,
-        messages=[
-            {"role": "system", "content": "You are a careful multimodal document Q&A assistant."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.1,
-    )
+@app.post("/upload")
+async def upload_document(file: UploadFile = File(...)):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    answer = response.choices[0].message.content or "No answer generated."
-    return {"answer": answer, "citations": evidence}
+    file_path = save_uploaded_file(file)
+    records = build_document_records(file_path)
+
+    if not records:
+        raise HTTPException(status_code=400, detail="No page content could be extracted from the PDF.")
+
+    chunks = []
+    metadata = []
+
+    for rec in records:
+        text = (rec.get("text") or "").strip()
+        if not text:
+            continue
+        chunks.append(text)
+        metadata.append({
+            "doc_id": rec["doc_id"],
+            "page_no": rec["page_no"],
+            "section": "body",
+            "source": rec.get("source", "pdf")
+        })
+
+    if chunks:
+        index = VectorIndex()
+        index.add_texts(chunks, metadata)
+        index.save()
+
+    return {
+        "status": "ok",
+        "document_id": records[0]["doc_id"],
+        "pages": len(records),
+        "message": "Document indexed successfully."
+    }
+
+
+@app.post("/ask")
+async def ask_question(payload: QuestionRequest):
+    q = payload.question.strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+
+    index = VectorIndex()
+    index.load()
+    results = index.search(q, k=5)
+
+    evidence = []
+    for item in results:
+        meta = item["metadata"]
+        evidence.append(
+            f"Document: {meta['doc_id']} | Page: {meta['page_no']} | Section: {meta['section']} | Source: {meta['source']}"
+        )
+
+    return answer_question(q, evidence)

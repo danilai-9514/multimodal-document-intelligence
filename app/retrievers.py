@@ -1,9 +1,9 @@
 import json
-from typing import Any, List
 from pathlib import Path
+from typing import Any, List
 
-import numpy as np
 import faiss
+import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from app.config import VECTOR_STORE_PATH, EMBEDDING_MODEL
@@ -18,6 +18,9 @@ class VectorIndex:
         self.metadata = []
 
     def add_texts(self, texts, metadata_list):
+        if not texts:
+            return
+
         embeddings = self.model.encode(texts, convert_to_numpy=True)
         embeddings = np.asarray(embeddings).astype("float32")
         dim = embeddings.shape[1]
